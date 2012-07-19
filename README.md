@@ -1,4 +1,1 @@
-vertx-mods
-==========
-
-The Vert.x Central Module Repository
+# The Vert.x Central Module Repository
