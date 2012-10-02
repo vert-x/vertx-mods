@@ -6,7 +6,9 @@ The latest version of this module can be found in the [campudus/vertx-session-ma
 
 ## Dependencies
 
-This module requires no special dependencies. It uses SharedData maps provided by Vert.x to save its information.
+This module requires the scala language module (org.scala-lang.scala-library-v2.9.2) to work.
+
+It uses SharedData maps provided by Vert.x to save its information.
 
 ## Name
 
