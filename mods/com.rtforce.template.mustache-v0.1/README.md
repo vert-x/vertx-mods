@@ -22,7 +22,7 @@ var templateConf = {
 
 and then for example in java you can use
 
-eb.send(templateAddress, call.body, new Handler<Message<JsonObject>>() {
+eb.send("mustachify", jsonObject, new Handler<Message<JsonObject>>() {
 
 	@Override
 	public void handle(Message<JsonObject> call) {
@@ -31,5 +31,22 @@ eb.send(templateAddress, call.body, new Handler<Message<JsonObject>>() {
 		}
 	});
 }
+
+in javascript you will have something like this
+
+eb.send("mustachify", { data : "hello world" }, function(message) {
+	console.log(message.output);
+});
+
+The json object is the data that you will send to your template and in mustache you can use it with {{data}}.
+
+For more info about mustache go to http://mustache.github.com/
+
+You can easily use mustache.js on the client-side.
+
+In the next version I will provide a way to bind client-side templates on the html page.
+
+Need to figure it still out!
+
 
 
