@@ -1,0 +1,4 @@
+{
+"deploys":"vertx.barmod-v1.0"
+"includes": "vertx.quuxmod-v1.0"
+}
