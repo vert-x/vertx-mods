@@ -5,10 +5,7 @@ This module allows data to be saved, retrieved, searched for, and deleted in a R
 licensed, advanced key-value store. It is often referred to as a data structure server since keys can contain strings,
 hashes, lists, sets and sorted sets. To use this module you must have a Redis server instance running on your network.
 
-[![Build Status](https://travis-ci.org/pmlopes/mod-redis-io.png)](https://travis-ci.org/pmlopes/mod-redis-io)
-
-This is a worker module and must be started as a worker verticle. (not entirelly true since I am still coding against
-Vert.x 1.3.1). On the vertx-2 branch worker is set to true.
+[![Build Status](https://travis-ci.org/pmlopes/mod-redis-io.png?branch=master)](https://travis-ci.org/pmlopes/mod-redis-io)
 
 ## Dependencies
 
@@ -16,7 +13,7 @@ This module requires a Redis server to be available on the network.
 
 ## Name
 
-The module name is `com.jetdrone.vertx.mods.redis`.
+The module name is `com.jetdrone.mod-redis-io`.
 
 ## Configuration
 
@@ -44,7 +41,7 @@ Let's take a look at each field in turn:
 * `host` Host name or ip address of the Redis instance. Defaults to `localhost`.
 * `port` Port at which the Redis instance is listening. Defaults to `6379`.
 * `encoding` The character encoding for string conversions (e.g.: `UTF-8`, `ISO-8859-1`, `US-ASCII`). Defaults to the platform default.
-* `binary` If true then a no conversion to String is done and binary data is returned. Also all String values are expected to be in byte array format.
+* `binary` To be implemented. In this case messages are expected to be in binary format.
 
 ## Usage
 
@@ -58,7 +55,7 @@ Simple example:
     config.putString("host", "localhost")
     config.putNumber("port", 6379)
 
-    container.deployModule("vertx.mods.redis", config, 1)
+    container.deployModule("com.jetdrone.mod-redis-io", config, 1)
 
     eb.send(address, [command: 'get', key: 'mykey']) { reply ->
         if (reply.body.status.equals('ok') {
@@ -69,41 +66,37 @@ Simple example:
     }
 ```
 
-Simple example with binary mode:
+Simple example with pub/sub mode:
 
 ```groovy
     def eb = vertx.eventBus()
-    def config = new JsonObject()
+    def pubConfig = new JsonObject()
+    pubConfig.putString("address", 'redis.pub')
+    def subConfig = new JsonObject()
+    subConfig.putString("address", 'redis.sub')
 
-    config.putString("address", address)
-    config.putString("host", "localhost")
-    config.putNumber("port", 6379)
-    config.putNumber("binary", true)
+    container.deployModule("com.jetdrone.mod-redis-io", pubConfig, 1)
+    container.deployModule("com.jetdrone.mod-redis-io", subConfig, 1)
 
-    container.deployModule("vertx.mods.redis", config, 1)
-
-    eb.send(address, [command: "del", key: key]) { reply0 ->
-
-        eb.send(address, [command: "append", key: key, value: "Hello".getBytes()]) { reply1 ->
-            assertNumber(5, reply1)
-
-                eb.send(address, [command: "append", key: key, value: " World".getBytes()]) { reply2 ->
-                    assertNumber(11, reply2)
-
-                    eb.send(address, [command: "get", key: key]) { reply3 ->
-                        def expected = "Hello World".getBytes()
-                        def result = reply3.body.getBinary("value")
-
-                        tu.azzert(expected.length == result.length)
-
-                        for (int i = 0; i < expected.length; i++) {
-                            tu.azzert(expected[i] == result[i])
-                        }
-                        tu.testComplete()
-                    }
-                }
-            }
+    // register a handler for the incoming message the naming the Redis module will use is base address + '.' + redis channel
+    eb.registerHandler("redis.sub.ch1", new Handler<Message<JsonObject>>() {
+        @Override
+        void handle(Message<JsonObject> received) {
+            // do whatever you need to do with your message
+            def value = received.body.getField('value')
+            // the value is a JSON doc with the following properties
+            // channel - The channel to which this message was sent
+            // pattern - Pattern is present if you use psubscribe command and is the pattern that matched this message channel
+            // message - The message payload
         }
+    });
+
+    // on sub address subscribe to channel ch1
+    eb.send('redis.sub', [command: 'subscribe', channel: 'ch1']) { subscribe ->
+    }
+
+    // on pub address publish a message
+    eb.send('redis.pub', [command: 'publish', channel: 'ch1', message: 'Hello World!']) { publish ->
     }
 ```
 
@@ -141,4 +134,26 @@ For a list of Redis commands, see [Redis Command Reference](http://redis.io/comm
 At the moment, commands can be specified only in lowercase. Minimal parsing is done on the replies.
 Commands that return a single line reply return `java.lang.String`, integer replies return `java.lang.Number`,
 "bulk" replies return an array of `java.lang.String` using the specified encoding, and "multi bulk" replies return a
-array of `java.lang.String` again using the specified encoding. `hgetall` is expected to return an `JsonObject`.
+array of `java.lang.String` again using the specified encoding. `hgetall` is returns a `JsonObject`.
+
+## Friendlier hash commands
+
+Most Redis commands take a single String or an Array of Strings as arguments, and replies are sent back as a single
+String or an Array of Strings. When dealing with hash values, there are a couple of useful exceptions to this.
+
+### command hgetall
+
+The reply from an `hgetall` command will be converted into a JSON Object.  That way you can interact with the responses
+using JSON syntax which is handy for the EventBus communication.
+
+### command hmset
+
+Multiple values in a hash can be set by supplying an object.Note however that key and value will be coerced to strings.
+NOTE: Not implemented yet!!!
+
+## Pub/Sub
+
+As demonstrated with the source code example above, the module can work in pub/sub mode too. The basic idea behind it is
+that you need to register a new handler for the address: `mod-redis-io-address.your_real_redis_address` At this moment
+all commands to `subscribe`, `psubscribe`, `unsubscribe` and `pusubscribe` will send the received messages to the right
+address.
