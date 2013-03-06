@@ -6,7 +6,7 @@ The latest version of this module can be found in the [campudus/vertx-session-ma
 
 ## Dependencies
 
-This module requires the scala language module (org.scala-lang.scala-library-v2.9.2) to work. It is built against Vert.x 1.3.1.
+This module requires the scala language module (org.scala-lang.scala-library-v2.10.0) to work. It is built against Vert.x 1.3.1.
 
 It uses either SharedData maps provided by Vert.x or a MongoDB to save its information, depending on your configuration (see below).
 
@@ -57,7 +57,7 @@ A short description about each field:
 
 The module supports a few operations. If you want to let clients use the session manager directly, be careful which commands you let them use.
 
-Operations are sent by specifying an `action` String and required and optional parameters. If a required parameter is missing, the server will reply with an error message in this format:
+Operations are sent by specifying an `action` String and required and optional parameters. If a required parameter is missing, you sent an incorrect action or something similar, the server will reply with an error message in this format:
 
     {
         "status" : "error",
@@ -80,6 +80,7 @@ To start a session, send a JSON message to the modules main address:
 The session manager will reply with a sessionId inside the data, looking like this:
 
     {
+    	"status": "ok",
         "sessionId": "94b1a3fe-16df-4ab2-ac10-aae67ad2c46d"
     }
     
@@ -118,6 +119,7 @@ If an administrator kills the session of a client, the client can be notified vi
 As soon as the session is destroyed, the server will reply with
 
     {
+    	"status": "ok",
         "sessionDestroyed": true
     }
 
@@ -136,6 +138,7 @@ You should be very careful not to let everyone use this command:
 It works analog to the `destroy` action. As soon as the work is done, the server will reply with:
 
     {
+    	"status": "ok",
         "cleared": true
     }
 
@@ -148,7 +151,12 @@ Sends a heartbeat to the server, resetting the timeout of the session. If you do
         "sessionId": <sessionId>
     }
 
-You have to provide a valid `sessionId`, otherwise the heartbeat will reply with error `SESSIONID_MISSING`.
+You have to provide a valid `sessionId`, otherwise the heartbeat will reply with error `SESSIONID_MISSING`. If the heartbeat could be delivered, it will reply with a message including the configurated timeout like this:
+
+    {
+        "status": "ok",
+        "timeout": 900000
+    }
 
 ### get
 
@@ -163,22 +171,58 @@ Gets some data from the session storage. You can get multiple fields with one co
 * `sessionId` is required and results in a `SESSIONID_MISSING` error, if not set. If the session is set but could not be found, a `SESSION_GONE` error is raised (i.e. sent to the session handler directly).
 * `fields` is required, too, and replies with a `FIELDS_MISSING` error, when omitted. If one of the fields cannot be found, the result of that field will be null.
 
+Here is a small example:
+
+    {
+        "action": "get",
+        "sessionId": "94b1a3fe-16df-4ab2-ac10-aae67ad2c46d",
+        "fields": ["nickname", "browser"]
+    }
+
+Would result in (if you did the `put` example before ;)):
+
+    {
+        "status": "ok",
+        "data": {
+            "nickname": "TheAwesomeGorilla",
+            "browser": "Mozilla Firefox 19"
+        }
+    } 
+
 ### put
 
 Stores data in the session. You provide a JsonObject and it gets stored in the session.
 
     {
-        "action": "put"
-        "sessionId": <sessionId>
+        "action": "put",
+        "sessionId": <sessionId>,
         "data": <JsonObject>
     }
 
-As soon as the session manager saved the data in the session, it will reply with `"sessionDataSaved": true`. There can be three kinds of errors:
+As soon as the session manager saved the data in the session, it will reply with `"sessionSaved": true`. There can be three kinds of errors:
 * `sessionId` was omitted: The session manager replies with error `SESSIONID_MISSING`.
 * `data` was not provided: The session manager replies with error `DATA_MISSING`.
 * `data` is not a JsonObject: The session manager replies with error `WRONG_DATA_TYPE`.
 
 If you send a key in `data` which already existed in the session storage, it will be overwritten by the value provided in the `data` object.
+
+Here is a small example:
+
+    {
+        "action": "put",
+        "sessionId": "94b1a3fe-16df-4ab2-ac10-aae67ad2c46d",
+        "data": {
+            "nickname": "TheAwesomeGorilla",
+            "browser": "Mozilla Firefox 19"
+        }
+    }
+
+Would result in:
+
+    {
+        "status": "ok",
+        "sessionSaved": true
+    } 
 
 ### status (access statistics or check session matches)
 
@@ -198,6 +242,7 @@ This report shows how many sessions are stored in the session storage right now.
 It will result in a message like this:
 
     {
+        "status": "ok",
         "openSessions": 16
     }
 
@@ -229,6 +274,7 @@ Here is an example to look for sessions which have stored the fields `race` with
 This would assemble a list of session ids and reply them back to the caller in this manner:
 
     {
+        "status": "ok",
         "matches": true,
         "sessions": ["", ""]
     }
