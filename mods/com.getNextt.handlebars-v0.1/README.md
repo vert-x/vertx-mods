@@ -1,4 +1,4 @@
-# com.getNextt.handlebars
+# com.getnextt.handlebars
 
 A super-simple [Handlebars.js][http://handlebarsjs.com] module for [Vert.x][http://vertx.io]
 
