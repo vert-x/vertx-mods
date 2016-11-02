@@ -1,4 +1,6 @@
-# The Vert.x Central Module Repository
+# Vert.x 2.x is **deprecated** - use instead http://vertx.io
+
+## The Vert.x Central Module Repository
 
 This module repository is only used for Vert.x 1.x
 
